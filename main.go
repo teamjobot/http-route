@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"strings"
 )
 
 var NotFound = ErrorPage(http.StatusNotFound, "Not Found")
@@ -18,7 +20,7 @@ func main() {
 
 	var err error
 	port := 80
-	jsonString := "{\"http://www.example.com\":\"http://www.example.com/elsewhere\"}"
+	jsonString := "{}"
 	file := ""
 	mappingsString := make(map[string]string)
 
@@ -30,25 +32,25 @@ func main() {
 	if file != "" {
 		bytes, err := ioutil.ReadFile(file)
 		if err != nil {
-			panic(err)
+			log.Fatalf("Could not open %s: %v", file, err)
 		}
 		jsonString = string(bytes)
 	}
 
 	err = json.Unmarshal([]byte(jsonString), &mappingsString)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Could not parse JSON: %v", err)
 	}
 
 	mappings := make([]Mapping, 0)
 	for key, value := range mappingsString {
 		from, err := url.Parse(key)
 		if err != nil {
-			panic(fmt.Sprintf("Could not parse URL: %s", key))
+			log.Fatalf("Could not parse URL: %s", key)
 		}
 		to, err := url.Parse(value)
 		if err != nil {
-			panic(fmt.Sprintf("Could not parse URL: %s", value))
+			log.Fatalf("Could not parse URL: %s", value)
 		}
 		mappings = append(mappings, Mapping{
 			From: *from,
@@ -56,10 +58,56 @@ func main() {
 		})
 	}
 
+	envs := os.Environ()
+	for _, env := range envs {
+		splits := strings.Split(env, "=")
+		key := splits[0]
+		value := splits[1]
+		from, err := url.Parse(key)
+		if strings.Contains(key, "://") && strings.Contains(value, "://") {
+			fmt.Println(key + " = " + value)
+			if err != nil {
+				continue
+			}
+			to, err := url.Parse(value)
+			if err != nil {
+				continue
+			}
+			mappings = append(mappings, Mapping{
+				From: *from,
+				To:   *to,
+			})
+		}
+	}
+
+	args := flag.Args()
+	for _, arg := range args {
+		if strings.Contains(arg, "=") {
+			splits := strings.Split(arg, "=")
+			key := splits[0]
+			value := splits[1]
+			from, err := url.Parse(key)
+			if err != nil {
+				log.Fatalf("Could not parse URL: %s", key)
+			}
+			to, err := url.Parse(value)
+			if err != nil {
+				log.Fatalf("Could not parse URL: %s", value)
+			}
+			mappings = append(mappings, Mapping{
+				From: *from,
+				To:   *to,
+			})
+		}
+	}
+
 	handler := CompileHandler(mappings, NotFound)
 
 	log.Printf("Listening on http://0.0.0.0:%d\n", port)
-	http.ListenAndServe(fmt.Sprintf(":%d", port), handler)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), handler)
+	if err != nil {
+		log.Fatalf("Unable to listen and serve: %v", err)
+	}
 
 }
 
