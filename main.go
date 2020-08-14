@@ -64,8 +64,7 @@ func main() {
 		key := splits[0]
 		value := splits[1]
 		from, err := url.Parse(key)
-		if strings.Contains(key, "://") && strings.Contains(value, "://") {
-			fmt.Println(key + " = " + value)
+		if (strings.Contains(key, "://") || (len(key) > 0 && key[0] == '/')) && strings.Contains(value, "://") {
 			if err != nil {
 				continue
 			}
@@ -129,7 +128,7 @@ func CompileHandler(mappings []Mapping, next http.HandlerFunc) http.HandlerFunc 
 	}
 	proxy := httputil.NewSingleHostReverseProxy(&baseUrl)
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Host == mapping.From.Host {
+		if mapping.From.Host == "" || req.Host == mapping.From.Host {
 			// Host matches
 			if len(req.URL.Path) >= len(mapping.From.Path) && req.URL.Path[0:len(mapping.From.Path)] == mapping.From.Path {
 				// Path prefix matches
