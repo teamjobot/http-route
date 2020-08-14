@@ -1,0 +1,10 @@
+version: '3.0'
+services:
+  http-proxy:
+    image: teamjobot/http-route
+    command: >
+      http-route -json
+      '{
+        "http://www.mydomain.com/subpath/": "http://www.example.com/",
+        "http://www.mydomain.com/otherpath/": "http://www.example.com/someotherpath/"
+      }'

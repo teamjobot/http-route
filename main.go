@@ -17,7 +17,7 @@ var BadGateway = ErrorPage(http.StatusBadGateway, "Bad Gateway")
 func main() {
 
 	var err error
-	port := 8080
+	port := 80
 	jsonString := "{\"http://www.example.com\":\"http://www.example.com/elsewhere\"}"
 	file := ""
 	mappingsString := make(map[string]string)
